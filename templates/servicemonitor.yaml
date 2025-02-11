@@ -1,0 +1,51 @@
+{{- range $appname, $values := .Values.deployments }}
+{{- if and $values.serviceMonitor $values.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "base.fullname" $ }}-{{ $appname }}
+  labels:
+    {{- include "base.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $appname }}
+    {{- with $values.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $values.serviceMonitor.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  jobLabel: {{ $values.serviceMonitor.jobLabel | default (printf "%s-%s" (include "base.fullname" $) $appname) | quote }}
+  selector:
+    matchLabels:
+      {{- include "base.selectorLabels" (dict "context" $ "component" $appname) | nindent 6 }}
+  namespaceSelector:
+    {{- if $values.serviceMonitor.namespaceSelector }}
+    {{- toYaml $values.serviceMonitor.namespaceSelector | nindent 4 }}
+    {{- else }}
+    matchNames:
+      - {{ $.Release.Namespace }}
+    {{- end }}
+  endpoints:
+    - port: {{ $values.serviceMonitor.port | default "http" }}
+      {{- if $values.serviceMonitor.scheme }}
+      scheme: {{ $values.serviceMonitor.scheme }}
+      {{- end }}
+      path: {{ $values.serviceMonitor.path | default "/metrics" }}
+      interval: {{ $values.serviceMonitor.interval | default "15s" }}
+      scrapeTimeout: {{ $values.serviceMonitor.scrapeTimeout | default "10s" }}
+      honorLabels: {{ $values.serviceMonitor.honorLabels | default false }}
+      {{- with $values.serviceMonitor.relabelings }}
+      relabelings:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $values.serviceMonitor.metricRelabelings }}
+      metricRelabelings:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $values.serviceMonitor.tlsConfig }}
+      tlsConfig:
+        {{- toYaml $values.serviceMonitor.tlsConfig | nindent 8 }}
+      {{- end }}
+{{- end }}
+{{- end }}

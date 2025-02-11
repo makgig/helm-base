@@ -1,0 +1,45 @@
+{{- range $appname, $values := .Values.deployments }}
+{{- if and $values.service $values.service.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "base.fullname" $ }}-{{ $appname }}
+  labels:
+    {{- include "base.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $appname }}
+  {{- with $values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ $values.service.type | default $.Values.service.type | default "ClusterIP" }}
+  ports:
+    {{- if $values.service.ports }}
+    {{- range $port := $values.service.ports }}
+    - port: {{ $port.port }}
+      targetPort: {{ $port.targetPort | default $port.port }}
+      {{- if $port.nodePort }}
+      nodePort: {{ $port.nodePort }}
+      {{- end }}
+      protocol: {{ $port.protocol | default "TCP" }}
+      name: {{ $port.name | default "http" }}
+      {{- if eq ($port.protocol | default "TCP") "TCP" }}
+      {{- if $port.appProtocol }}
+      appProtocol: {{ $port.appProtocol }}
+      {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- else }}
+    - port: {{ $values.service.port | default 8080 }}
+      targetPort: {{ $values.service.targetPort | default 80 }}
+      protocol: TCP
+      name: http
+      {{- if $values.service.appProtocol }}
+      appProtocol: {{ $values.service.appProtocol }}
+      {{- end }}
+    {{- end }}
+  selector:
+    {{- include "base.selectorLabels" (dict "context" $ "component" $appname) | nindent 4 }}
+{{- end }}
+{{ end }}

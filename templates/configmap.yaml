@@ -1,0 +1,36 @@
+{{/*
+ConfigMap шаблон создает конфигурационные карты для каждого активного деплоймента.
+Он объединяет локальные переменные окружения с глобальными, при этом локальные
+имеют приоритет над глобальными.
+*/}}
+
+{{- range $appname, $values := .Values.deployments }}
+{{- if and (not $values.disabled) (or $values.envs $.Values.globalEnvs $values.configFiles) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "base.fullname" $ }}-{{ $appname }}
+  labels:
+    {{- include "base.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $appname }}
+  {{- with $values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  {{- range $key, $value := $.Values.globalEnvs }}
+  {{ $key }}: {{ $value | toString | quote }}
+  {{- end }}
+  {{- range $key, $value := $values.envs }}
+  {{ $key }}: {{ $value | toString | quote }}
+  {{- end }}
+  {{/* Добавляем дополнительные конфигурационные файлы, если они определены */}}
+  {{- if $values.configFiles }}
+  {{- range $filename, $content := $values.configFiles }}
+  {{ $filename }}: |
+    {{- $content | nindent 4 }}
+  {{- end }}
+  {{- end }}
+{{ end }}
+{{ end }}

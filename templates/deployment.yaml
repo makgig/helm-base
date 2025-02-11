@@ -1,0 +1,125 @@
+{{- range $appname, $values := .Values.deployments -}}
+{{- if not $values.disabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "base.fullname" $ }}-{{ $appname }}
+  labels:
+    {{- include "base.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $appname }}
+spec:
+  {{- with $values.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  replicas: {{ $values.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "base.selectorLabels" (dict "context" $ "component" $appname) | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        rollme: {{ randAlphaNum 5 | quote }}
+        {{- with $values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "base.selectorLabels" $ | nindent 8 }}
+        app.kubernetes.io/component: {{ $appname }}
+    spec:
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "base.serviceAccountName" $ }}
+      securityContext:
+        {{- toYaml $.Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: {{ $.Release.Name }}-{{ $appname }}
+        securityContext:
+          {{- toYaml $.Values.securityContext | nindent 12 }}
+        image: {{ include "base.container.image" (dict "local" $values.image "global" $.Values.image) | quote }}
+        imagePullPolicy: {{ $values.imagePullPolicy | default $.Values.image.pullPolicy }}
+        {{- with $values.livenessProbe }}
+        livenessProbe:
+          {{- toYaml . | nindent 12 }}
+        {{- end }}
+        {{- with $values.readinessProbe }}
+        readinessProbe:
+          {{- toYaml . | nindent 12 }}
+        {{- end }}
+        {{- with $values.startupProbe }}
+        startupProbe:
+          {{- toYaml . | nindent 12 }}
+        {{- end }}
+        {{- if $values.lifecycle }}
+        lifecycle:
+          {{- toYaml $values.lifecycle | nindent 12 }}
+        {{- end }}
+        {{- with $values.command }}
+        command:
+          {{- range . }}
+          - {{ . | quote }}
+          {{- end }}
+        {{- end }}
+        {{- with $values.args }}
+        args:
+          {{- range . }}
+          - {{ . | quote }}
+          {{- end }}
+        {{- end }}
+        {{- with $values.ports | default (list (dict "containerPort" ($values.service.targetPort | default 80))) }}
+        ports:
+          {{- include "base.container.ports" (dict "ports" .) | nindent 12 }}
+        {{- end }}
+        envFrom:
+          - configMapRef:
+              name: {{ include "base.fullname" $ }}-{{ $appname }}
+          - secretRef:
+              name: {{ include "base.fullname" $ }}
+              optional: true
+          {{- if $.Values.extSecretRef }}
+          - secretRef:
+              name: {{ $.Values.extSecretRef }}-{{ $appname }}-secret
+              optional: true
+          {{- end }}
+          {{- if $values.extSecretRef }}
+          - secretRef:
+              name: {{ $values.extSecretRef }}
+              optional: true
+          {{- end }}
+        resources:
+          {{- include "base.container.resources" (dict "values" $values.resources "defaults" $.Values.resources) | nindent 12 }}
+        {{- with $values.volumeMounts }}
+        volumeMounts:
+          {{- toYaml . | nindent 12 }}
+        {{- end }}
+      {{- with $values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $values.nodeSelector | default $.Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $values.affinity }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: {{ $values.affinity.key  | default "app.kubernetes.io/instance" | quote }}
+                      operator: {{ $values.affinity.operator | default "In" | quote }}
+                      values:
+                        {{- toYaml $values.affinity.values | nindent 22 }}
+                topologyKey: {{ $values.affinity.topologyKey | default "kubernetes.io/hostname" | quote }}
+              weight: {{ $values.affinity.weight | default 100 }}
+      {{- end }}
+      {{- with $values.tolerations | default $.Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{ end }}
+{{ end }}

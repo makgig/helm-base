@@ -1,0 +1,206 @@
+# -- Переопределение имени чарта
+nameOverride: ""
+# -- Полное переопределение имени чарта
+fullnameOverride: ""
+# -- Общие метки для всех ресурсов
+commonLabels: {}
+  # team: infrastructure
+  # environment: production
+# -- Аннотации для секретов
+secretAnnotations: {}
+  # vault.hashicorp.com/agent-inject: "true"
+
+
+# -- Глобальные настройки образа
+image:
+  # -- Репозиторий образа по умолчанию
+  repository: nginx
+  # -- Политика загрузки образа (Always, Never, IfNotPresent)
+  pullPolicy: IfNotPresent
+  # -- Тег образа, если не указан, используется latest
+  tag: "latest"
+
+# -- Секреты для доступа к приватным репозиториям
+imagePullSecrets: []
+  # - name: registry-secret
+
+# -- Настройки для сервисного аккаунта
+serviceAccount:
+  # -- Создавать ли сервисный аккаунт
+  create: true
+  # -- Аннотации для сервисного аккаунта
+  annotations: {}
+    # eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/my-role
+  # -- Имя сервисного аккаунта, если не указано, используется имя релиза
+  name: ""
+
+# -- Глобальные настройки безопасности для подов
+podSecurityContext: {}
+  # fsGroup: 2000
+
+# -- Глобальные настройки безопасности для контейнеров
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# -- Глобальные переменные окружения, доступные всем контейнерам
+globalEnvs: {}
+  # ENVIRONMENT: production
+  # LOG_LEVEL: info
+
+# -- Секретные переменные окружения
+secretEnv: {}
+  # DATABASE_URL: postgresql://user:pass@host:5432/db
+  # API_KEY: secret-key
+
+# -- Глобальные настройки сервиса
+service:
+  # -- Тип сервиса по умолчанию
+  type: ClusterIP
+  # -- Порт сервиса по умолчанию
+  port: 8080
+
+# -- Настройки развертываний
+deployments:
+  # example-app:
+  #   # -- Отключить развертывание
+  #   disabled: false
+  #   # -- Количество реплик
+  #   replicaCount: 1
+  #   
+  #   # -- Настройки образа для конкретного развертывания
+  #   image:
+  #     repository: my-app
+  #     tag: "1.0.0"
+  #   
+  #   # -- Настройки автомасштабирования
+  #   autoscaling:
+  #     enabled: false
+  #     minReplicas: 1
+  #     maxReplicas: 3
+  #     targetCPUUtilizationPercentage: 80
+  #     targetMemoryUtilizationPercentage: 80
+  #   
+  #   # -- Проверки работоспособности
+  #   livenessProbe:
+  #     httpGet:
+  #       path: /health
+  #       port: http
+  #     initialDelaySeconds: 30
+  #     periodSeconds: 10
+  #   
+  #   readinessProbe:
+  #     httpGet:
+  #       path: /ready
+  #       port: http
+  #     initialDelaySeconds: 30
+  #     periodSeconds: 10
+  #   
+  #   # -- Настройки сервиса
+  #   service:
+  #     enabled: true
+  #     type: ClusterIP
+  #     ports:
+  #       - name: http
+  #         port: 8080
+  #         targetPort: 8080
+  #       - name: grpc
+  #         port: 9090
+  #         targetPort: 9090
+  #         appProtocol: h2c
+  #   
+  #   # -- Настройки Ingress
+  #   ingress:
+  #     enabled: false
+  #     className: nginx
+  #     annotations:
+  #       cert-manager.io/cluster-issuer: letsencrypt-prod
+  #     hosts:
+  #       - host: example.com
+  #         paths:
+  #           - path: /
+  #             pathType: Prefix
+  #     tls:
+  #       - secretName: example-tls
+  #         hosts:
+  #           - example.com
+  #   
+  #   # -- Настройки мониторинга
+  #   serviceMonitor:
+  #     enabled: false
+  #     interval: "15s"
+  #     scrapeTimeout: "10s"
+  #     path: /metrics
+  #     port: http
+  #   
+  #   # -- Ресурсы контейнера
+  #   resources:
+  #     limits:
+  #       cpu: 1
+  #       memory: 1Gi
+  #     requests:
+  #       cpu: 100m
+  #       memory: 128Mi
+  #   
+  #   # -- Переменные окружения
+  #   envs: {}
+  #     # API_PORT: "8080"
+  #   
+  #   # -- Файлы конфигурации
+  #   configFiles: {}
+  #     # config.yaml: |
+  #     #   key: value
+  #   
+  #   # -- Настройки размещения подов
+  #   nodeSelector: {}
+  #   tolerations: []
+  #   affinity:
+  #     key: app.kubernetes.io/instance
+  #     operator: In
+  #     values:
+  #       - example-app
+  #     topologyKey: kubernetes.io/hostname
+  #     weight: 100
+
+# -- Настройки для Jobs
+jobs:
+  # db-migration:
+  #   disabled: false
+  #   image:
+  #     repository: migration-tool
+  #     tag: "1.0.0"
+  #   command:
+  #     - /bin/sh
+  #     - -c
+  #     - "./migrate.sh"
+  #   envs: {}
+  #   resources:
+  #     requests:
+  #       cpu: 100m
+  #       memory: 128Mi
+
+# -- Настройки для CronJobs
+cronJobs:
+  # backup:
+  #   disabled: false
+  #   schedule: "0 0 * * *"
+  #   image:
+  #     repository: backup-tool
+  #     tag: "1.0.0"
+  #   command:
+  #     - /bin/sh
+  #     - -c
+  #     - "./backup.sh"
+  #   envs: {}
+  #   resources:
+  #     requests:
+  #       cpu: 100m
+  #       memory: 128Mi
+
+# -- Глобальные настройки для тестов
+tests:
+  enabled: true

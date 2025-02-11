@@ -1,0 +1,43 @@
+Thank you for installing {{ .Chart.Name }}.
+
+{{- range $appname, $values := .Values.deployments }}
+{{- if and $values.service $values.service.enabled }}
+
+Application: {{ $appname }}
+----------------
+{{- if contains "NodePort" $values.service.type }}
+  Get the application URL by running these commands:
+  export NODE_PORT=$(kubectl get --namespace {{ $.Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "base.fullname" $ }}-{{ $appname }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ $.Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+
+{{- else if contains "LoadBalancer" $values.service.type }}
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+        You can watch the status by running:
+        kubectl get --namespace {{ $.Release.Namespace }} svc -w {{ include "base.fullname" $ }}-{{ $appname }}
+  
+  Get the application URL by running:
+  export SERVICE_IP=$(kubectl get svc --namespace {{ $.Release.Namespace }} {{ include "base.fullname" $ }}-{{ $appname }} --template "{{ "{{ range (index .status.loadBalancer.ingress 0) }}{{ . }}{{ end }}" }}")
+  echo http://$SERVICE_IP:{{ $values.service.port }}
+
+{{- else if contains "ClusterIP" $values.service.type }}
+  Access your service by running these commands:
+  export POD_NAME=$(kubectl get pods --namespace {{ $.Release.Namespace }} -l "app.kubernetes.io/name={{ include "base.name" $ }},app.kubernetes.io/instance={{ $.Release.Name }},app.kubernetes.io/component={{ $appname }}" -o jsonpath="{.items[0].metadata.name}")
+  kubectl --namespace {{ $.Release.Namespace }} port-forward $POD_NAME {{ $values.service.port }}:{{ $values.service.targetPort }}
+  
+  Then visit http://127.0.0.1:{{ $values.service.port }}
+
+{{- end }}
+
+{{- if $values.ingress.enabled }}
+  Your application should be available at:
+  {{- range $values.ingress.hosts }}
+  - https://{{ .host }}
+  {{- end }}
+{{- end }}
+
+{{- end }}
+{{- end }}
+
+For more information about your deployment, try:
+  kubectl get all -l "app.kubernetes.io/instance={{ .Release.Name }}" -n {{ .Release.Namespace }}

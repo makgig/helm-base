@@ -1,0 +1,103 @@
+{{- range $jobname, $values := .Values.cronJobs }}
+{{- if not $values.disabled }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "base.fullname" $ }}-{{ $jobname }}
+  labels:
+    {{- include "base.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $jobname }}
+spec:
+  schedule: {{ $values.schedule | required "Schedule must be specified for cronjob" }}
+  {{- with $values.concurrencyPolicy }}
+  concurrencyPolicy: {{ . }}
+  {{- end }}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "base.labels" $ | nindent 12 }}
+            app.kubernetes.io/component: {{ $jobname }}
+        spec:
+          {{- with $.Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+          - name: {{ $jobname }}
+            image: {{ include "base.container.image" (dict "local" $values.image "global" $.Values.image) | quote }}
+            imagePullPolicy: {{ $values.imagePullPolicy | default $.Values.image.pullPolicy }}
+            command: 
+              {{- range $values.command }}
+                - {{ . | quote }}
+              {{- end }}
+            {{- if $values.args }}
+            args:
+              {{- range $values.args }}
+                - {{ . | quote }}
+              {{- end }}
+            {{- end }}
+            {{- if or $values.envs $.Values.globalEnvs }}
+            env:
+              {{- range $key, $value := $values.envs }}
+              - name: {{ $key }}
+                value: {{ $value | toString | quote }}
+              {{- end }}
+              {{- range $key, $value := $.Values.globalEnvs }}
+              - name: {{ $key }}
+                value: {{ $value | toString | quote }}
+              {{- end }}
+            {{- end }}
+            envFrom:
+              - secretRef:
+                  name: {{ include "base.fullname" $ }}
+                  optional: true
+              {{- if $.Values.extSecretRef }}
+              - secretRef:
+                  name: {{ $.Values.extSecretRef }}
+                  optional: true
+              {{- end }}
+              {{- if $values.extSecretRef }}
+              - secretRef:
+                  name: {{ $values.extSecretRef }}
+                  optional: true
+              {{- end }}
+            {{- with $values.resources | default $.Values.resources }}
+            resources:
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- with $values.volumeMounts }}
+            volumeMounts:
+              {{- toYaml . | nindent 10 }}
+            {{- end }}
+          {{- with $values.volumes }}
+          volumes:
+            {{- toYaml . | nindent 8 }}
+          {{- end }}
+          restartPolicy: {{ $values.restartPolicy | default "OnFailure" }}
+          {{- with $values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 8 }}
+          {{- end }}
+          {{- if $values.affinity }}
+          affinity:
+            podAntiAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
+                        - key: {{ $values.affinity.key  | default "app.kubernetes.io/instance" | quote }}
+                          operator: {{ $values.affinity.operator | default "In" | quote }}
+                          values:
+                            {{- toYaml $values.affinity.values | nindent 22 }}
+                    topologyKey: {{ $values.affinity.topologyKey | default "kubernetes.io/hostname" | quote }}
+                  weight: {{ $values.affinity.weight | default 100 }}
+          {{- end }}
+          {{- with $values.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 8 }}
+          {{- end }}
+{{ end }}
+{{ end }}

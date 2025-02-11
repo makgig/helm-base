@@ -1,0 +1,49 @@
+{{- $fullName := include "base.fullname" . -}}
+{{- range $appname, $values := .Values.deployments }}
+{{- if and $values.autoscaling $values.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $fullName }}-{{ $appname }}
+  labels:
+    {{- include "base.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $appname }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $fullName }}-{{ $appname }}
+  minReplicas: {{ $values.autoscaling.minReplicas | default 1 }}
+  maxReplicas: {{ $values.autoscaling.maxReplicas | default 1 }}
+  metrics:
+    # Масштабирование по утилизации памяти
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ $values.autoscaling.targetMemoryUtilizationPercentage | default 85 }}
+    # Масштабирование по утилизации CPU
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ $values.autoscaling.targetCPUUtilizationPercentage | default 85 }}
+    {{- if $values.autoscaling.requests }}
+    # Масштабирование по количеству запросов
+    - type: Pods
+      pods:
+        metric:
+          name: http_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: {{ $values.autoscaling.requests.targetAverageValue }}
+    {{- end }}
+    {{- with $values.autoscaling.custom }}
+    # Пользовательские метрики для масштабирования
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
+{{ end }}
