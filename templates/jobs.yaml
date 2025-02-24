@@ -4,10 +4,9 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "base.fullname" $ }}-{{ $jobname }}
+  name: {{ include "base.fullname" (dict "Release" .Release "Values" .Values "component" $jobname) }}
   labels:
-    {{- include "base.labels" $ | nindent 4 }}
-    app.kubernetes.io/component: {{ $jobname }}
+    {{- include "base.labels" (dict "Release" .Release "Values" .Values "component" $jobname) | nindent 4 }}
   annotations:
     helm.sh/hook: "post-install,post-upgrade"
     helm.sh/hook-weight: "1"
@@ -20,8 +19,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "base.labels" $ | nindent 8 }}
-        app.kubernetes.io/component: {{ $jobname }}
+        {{- include "base.labels" (dict "Release" .Release "Values" .Values "component" $jobname) | nindent 8 }}
       {{- with $values.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}

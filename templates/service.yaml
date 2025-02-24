@@ -4,10 +4,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "base.fullname" $ }}-{{ $appname }}
+  name: {{ include "base.fullname" (dict "Release" $.Release "Values" $.Values "component" $appname) }}
   labels:
-    {{- include "base.labels" $ | nindent 4 }}
-    app.kubernetes.io/component: {{ $appname }}
+    {{- include "base.labels" (dict "Release" $.Release "Values" $.Values "Chart" $.Chart "component" $appname) | nindent 4 }}
   {{- with $values.service.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -40,6 +39,6 @@ spec:
       {{- end }}
     {{- end }}
   selector:
-    {{- include "base.selectorLabels" (dict "context" $ "component" $appname) | nindent 4 }}
+    {{- include "base.selectorLabels" (dict "Release" $.Release "Values" $.Values "component" $appname) | nindent 4 }}
 {{- end }}
 {{ end }}

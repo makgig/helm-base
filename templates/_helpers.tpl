@@ -9,7 +9,7 @@
 Используется как основа для именования ресурсов
 */}}
 {{- define "base.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{- default .Release.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{/*
@@ -17,14 +17,14 @@
 Комбинирует имя релиза и чарта, используется для уникальной идентификации инсталляции
 */}}
 {{- define "base.fullname" -}}
-{{- if .Values.fullnameOverride -}}
+{{- if not (empty .Values.fullnameOverride) -}}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
-{{- $name := default .Chart.Name .Values.nameOverride -}}
-{{- if contains $name .Release.Name -}}
-{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- $name := .Release.Name -}}
+{{- if .component -}}
+{{- printf "%s-%s" $name .component | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- $name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -46,14 +46,16 @@
 Общие метки, используемые всеми ресурсами
 */}}
 {{- define "base.labels" -}}
-helm.sh/chart: {{ include "base.chart" . }}
-{{ include "base.selectorLabels" . }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- if .Chart.AppVersion }}
+app.kubernetes.io/name: {{ include "base.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+helm.sh/chart: {{ include "base.chart" . }}
+{{- if .component }}
+app.kubernetes.io/component: {{ .component }}
 {{- end }}
 {{- with .Values.commonLabels }}
-{{ toYaml . }}
+{{- toYaml . | nindent 0 }}
 {{- end }}
 {{- end -}}
 
@@ -62,12 +64,11 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 */}}
 {{- define "base.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "base.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
-{{- with .component }}
-app.kubernetes.io/component: {{ . }}
+app.kubernetes.io/instance: {{ .Release.Name }} 
+{{- if .component }}
+app.kubernetes.io/component: {{ .component }}
 {{- end }}
 {{- end -}}
-
 
 {{/*
 ----------------------------------------
@@ -149,7 +150,7 @@ include "base.container.ports" (dict "ports" $values.ports)
 {{- define "base.container.ports" -}}
 {{- range .ports }}
 - name: {{ .name | default "http" }}
-  containerPort: {{ .containerPort }}
+  containerPort: {{ .targetPort }}
   protocol: {{ .protocol | default "TCP" }}
   {{- if .hostPort }}
   hostPort: {{ .hostPort }}
@@ -163,9 +164,11 @@ include "base.container.ports" (dict "ports" $values.ports)
 {{- define "base.container.resources" -}}
 {{- $values := .values | default dict }}
 {{- $defaults := .defaults | default dict }}
+{{- $defaultRequests := $defaults.requests | default dict }}
+{{- $valueRequests := $values.requests | default dict }}
 requests:
-  cpu: {{ $values.requests.cpu | default $defaults.requests.cpu | default "100m" }}
-  memory: {{ $values.requests.memory | default $defaults.requests.memory | default "128Mi" }}
+  cpu: {{ $valueRequests.cpu | default $defaultRequests.cpu | default "100m" }}
+  memory: {{ $valueRequests.memory | default $defaultRequests.memory | default "128Mi" }}
 {{- with $values.limits | default $defaults.limits }}
 limits:
   {{- toYaml . | nindent 2 }}

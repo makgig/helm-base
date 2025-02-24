@@ -4,10 +4,9 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ include "base.fullname" $ }}-{{ $jobname }}
+  name: {{ include "base.fullname" (dict "Release" .Release "Values" .Values "component" $jobname) }} 
   labels:
-    {{- include "base.labels" $ | nindent 4 }}
-    app.kubernetes.io/component: {{ $jobname }}
+    {{- include "base.labels" (dict "Release" .Release "Values" .Values "component" $jobname) | nindent 4 }}
 spec:
   schedule: {{ $values.schedule | required "Schedule must be specified for cronjob" }}
   {{- with $values.concurrencyPolicy }}
@@ -18,8 +17,7 @@ spec:
       template:
         metadata:
           labels:
-            {{- include "base.labels" $ | nindent 12 }}
-            app.kubernetes.io/component: {{ $jobname }}
+            {{- include "base.labels" (dict "Release" .Release "Values" .Values "component" $jobname) | nindent 12 }}
         spec:
           {{- with $.Values.imagePullSecrets }}
           imagePullSecrets:

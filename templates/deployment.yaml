@@ -4,10 +4,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "base.fullname" $ }}-{{ $appname }}
+  name: {{ include "base.fullname" (dict "Values" $.Values "Release" $.Release "component" $appname) }}
   labels:
-    {{- include "base.labels" $ | nindent 4 }}
-    app.kubernetes.io/component: {{ $appname }}
+    {{- include "base.labels" (dict "Values" $.Values "Release" $.Release "Chart" $.Chart "component" $appname) | nindent 4 }}
 spec:
   {{- with $values.strategy }}
   strategy:
@@ -16,7 +15,7 @@ spec:
   replicas: {{ $values.replicaCount | default 1 }}
   selector:
     matchLabels:
-      {{- include "base.selectorLabels" (dict "context" $ "component" $appname) | nindent 6 }}
+      {{- include "base.selectorLabels" (dict "Values" $.Values "Release" $.Release "component" $appname) | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -25,8 +24,7 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        {{- include "base.selectorLabels" $ | nindent 8 }}
-        app.kubernetes.io/component: {{ $appname }}
+        {{- include "base.selectorLabels" (dict "Values" $.Values "Release" $.Release "component" $appname) | nindent 8 }}
     spec:
       {{- with $.Values.imagePullSecrets }}
       imagePullSecrets:
@@ -69,9 +67,21 @@ spec:
           - {{ . | quote }}
           {{- end }}
         {{- end }}
-        {{- with $values.ports | default (list (dict "containerPort" ($values.service.targetPort | default 80))) }}
+        {{- if and $values.service $values.service.enabled }}
+        {{- if $values.service.ports }}
         ports:
-          {{- include "base.container.ports" (dict "ports" .) | nindent 12 }}
+          {{- include "base.container.ports" (dict "ports" $values.service.ports) | nindent 12 }}
+        {{- else }}
+        ports:
+          - name: http
+            containerPort: {{ $.Values.service.targetPort | default 80 }}
+            protocol: TCP
+        {{- end }}
+        {{- else }}
+        ports:
+          - name: http
+            containerPort: {{ $.Values.service.targetPort | default 80 }}
+            protocol: TCP
         {{- end }}
         envFrom:
           - configMapRef:

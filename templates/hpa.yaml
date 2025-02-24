@@ -1,19 +1,17 @@
-{{- $fullName := include "base.fullname" . -}}
 {{- range $appname, $values := .Values.deployments }}
 {{- if and $values.autoscaling $values.autoscaling.enabled }}
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ $fullName }}-{{ $appname }}
+  name: {{ include "base.fullname" (dict "Release" $.Release "Values" $.Values "component" $appname) }}
   labels:
-    {{- include "base.labels" $ | nindent 4 }}
-    app.kubernetes.io/component: {{ $appname }}
+    {{- include "base.labels" (dict "Release" $.Release "Values" $.Values "Chart" $.Chart "component" $appname) | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ $fullName }}-{{ $appname }}
+    name: {{ include "base.fullname" (dict "Release" $.Release "Values" $.Values "component" $appname) }}
   minReplicas: {{ $values.autoscaling.minReplicas | default 1 }}
   maxReplicas: {{ $values.autoscaling.maxReplicas | default 1 }}
   metrics:

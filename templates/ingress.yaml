@@ -3,10 +3,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "base.fullname" $ }}-{{ $appname }}
+  name: {{ include "base.fullname" (dict "Release" $.Release "Values" $.Values "component" $appname) }} 
   labels:
-    {{- include "base.labels" $ | nindent 4 }}
-    app.kubernetes.io/component: {{ $appname }}
+    {{- include "base.labels" (dict "Release" $.Release "Values" $.Values "Chart" $.Chart "component" $appname) | nindent 4 }}
   {{- with $values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -35,7 +34,7 @@ spec:
             pathType: {{ .pathType | default "Prefix" }}
             backend:
               service:
-                name: {{ include "base.fullname" $ }}-{{ $appname }}
+                name: {{ include "base.fullname" (dict "Release" $.Release "Values" $.Values "component" $appname) }}
                 port:
                   number: {{ $values.service.port }}
           {{- end }}
